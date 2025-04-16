@@ -2,23 +2,141 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Jetson Nano Status</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jetson Nano Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.8/dist/axios.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.24.6/babel.min.js"></script>
 </head>
-<body>
-    <h1>System Status</h1>
-    <p>CPU Usage: {{ cpu_usage }}%</p>
-    <p>RAM Usage: {{ ram_usage }}%</p>
-    <p>GPU Usage: {{ gpu_usage }}</p>
-    <p>Thermals: {{ thermals }}°C</p>
-    <pre>{{ neofetch }}</pre>
-    
-    <h2>Actions</h2>
-    <form action="/action" method="post">
-        <button name="action" value="restart">Restart</button>
-        <button name="action" value="poweroff">Power Off</button>
-    </form>
-    
-    <h2>Automation Log</h2>
-    <pre>{{ automation_log }}</pre>
+<body class="bg-gray-900 text-white">
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        const ProgressBar = ({ label, value, max = 100, color }) => (
+            <div className="mb-4">
+                <div className="flex justify-between mb-1">
+                    <span>{label}</span>
+                    <span>{value}%</span>
+                </div>
+                <div className="w-full bg-gray-700 rounded-full h-2.5">
+                    <div
+                        className={`h-2.5 rounded-full ${color}`}
+                        style={{ width: `${Math.min(value, max)}%`, transition: 'width 0.5s ease-in-out' }}
+                    ></div>
+                </div>
+            </div>
+        );
+
+        const Dashboard = () => {
+            const [stats, setStats] = useState({
+                cpu_usage: 0,
+                ram_usage: 0,
+                gpu_usage: 'N/A',
+                thermals: 'N/A',
+                neofetch: '',
+                automation_log: ''
+            });
+            const logRef = useRef(null);
+
+            const fetchStats = async () => {
+                try {
+                    const response = await axios.get('/api/stats');
+                    setStats(response.data);
+                    // Auto-scroll to bottom of logs
+                    if (logRef.current) {
+                        logRef.current.scrollTop = logRef.current.scrollHeight;
+                    }
+                } catch (error) {
+                    console.error('Error fetching stats:', error);
+                }
+            };
+
+            useEffect(() => {
+                fetchStats();
+                const interval = setInterval(fetchStats, 5000); // Refresh every 5 seconds
+                return () => clearInterval(interval);
+            }, []);
+
+            const handleAction = async (action) => {
+                if (window.confirm(`Are you sure you want to ${action}?`)) {
+                    try {
+                        await axios.post('/api/action', { action });
+                        alert(`${action} initiated`);
+                    } catch (error) {
+                        alert('Error performing action');
+                    }
+                }
+            };
+
+            return (
+                <div className="min-h-screen p-6">
+                    <h1 className="text-3xl font-bold mb-6 text-center text-cyan-400">Jetson Nano Dashboard</h1>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {/* System Stats Card */}
+                        <div className="bg-gray-800 p-6 rounded-lg shadow-lg hover:shadow-cyan-500/50 transition-shadow">
+                            <h2 className="text-xl font-semibold mb-4 text-cyan-300">System Status</h2>
+                            <ProgressBar label="CPU Usage" value={stats.cpu_usage} color="bg-cyan-500" />
+                            <ProgressBar label="RAM Usage" value={stats.ram_usage} color="bg-purple-500" />
+                            <div className="mb-4">
+                                <div className="flex justify-between">
+                                    <span>GPU Usage</span>
+                                    <span>{stats.gpu_usage}</span>
+                                </div>
+                            </div>
+                            <div className="mb-4">
+                                <div className="flex justify-between">
+                                    <span>Thermals</span>
+                                    <span>{stats.thermals}°C</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Neofetch Card */}
+                        <div className="bg-gray-800 p-6 rounded-lg shadow-lg hover:shadow-cyan-500/50 transition-shadow">
+                            <h2 className="text-xl font-semibold mb-4 text-cyan-300">System Info</h2>
+                            <pre className="text-sm text-gray-300 bg-gray-900 p-4 rounded max-h-96 overflow-auto">
+                                {stats.neofetch || 'Loading...'}
+                            </pre>
+                        </div>
+
+                        {/* Actions Card */}
+                        <div className="bg-gray-800 p-6 rounded-lg shadow-lg hover:shadow-cyan-500/50 transition-shadow">
+                            <h2 className="text-xl font-semibold mb-4 text-cyan-300">Actions</h2>
+                            <div className="flex space-x-4">
+                                <button
+                                    onClick={() => handleAction('restart')}
+                                    className="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-4 rounded transition-colors"
+                                >
+                                    Restart
+                                </button>
+                                <button
+                                    onClick={() => handleAction('poweroff')}
+                                    className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition-colors"
+                                >
+                                    Power Off
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Automation Log Card */}
+                        <div className="bg-gray-800 p-6 rounded-lg shadow-lg hover:shadow-cyan-500/50 transition-shadow md:col-span-2 lg:col-span-3">
+                            <h2 className="text-xl font-semibold mb-4 text-cyan-300">Automation Log</h2>
+                            <pre
+                                ref={logRef}
+                                className="text-sm text-gray-300 bg-gray-900 p-4 rounded max-h-96 overflow-auto"
+                            >
+                                {stats.automation_log || 'No logs available'}
+                            </pre>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        ReactDOM.render(<Dashboard />, document.getElementById('root'));
+    </script>
 </body>
 </html>

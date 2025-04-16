@@ -27,3 +27,5 @@ fi
 if [ -f main.py ]; then
     python3 main.py >> /var/log/automation.log 2>&1 &
 fi
+
+# sudo ~/mecanum-robot-control/line-following/python3 mecanum-line-controller.py

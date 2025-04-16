@@ -1,2 +1,4 @@
 flask
 psutil
+streamlit==1.38.0
+pyserial==3.5

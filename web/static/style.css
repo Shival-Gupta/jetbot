@@ -1,0 +1,63 @@
+/* Basic CSS - enhance as needed */
+body {
+    font-family: sans-serif;
+    line-height: 1.6;
+    padding: 20px;
+    background-color: #f4f4f4;
+}
+
+.container {
+    max-width: 800px;
+    margin: auto;
+    background: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+h1, h2 {
+    color: #333;
+}
+
+.stats, .controls {
+    margin-bottom: 20px;
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+}
+
+.stats div, .controls button {
+    margin-bottom: 10px;
+}
+
+button {
+    padding: 10px 15px;
+    font-size: 1em;
+    cursor: pointer;
+    border: none;
+    border-radius: 4px;
+    margin-right: 10px;
+}
+
+.btn-reboot { background-color: #ffa500; color: white; }
+.btn-shutdown { background-color: #dc3545; color: white; }
+.btn-refresh { background-color: #007bff; color: white; }
+
+button:hover {
+    opacity: 0.9;
+}
+
+progress {
+    width: 100%;
+    height: 20px;
+    margin-top: 5px;
+}
+
+#status {
+    margin-top: 15px;
+    padding: 10px;
+    background-color: #e9ecef;
+    border-radius: 4px;
+    font-family: monospace;
+}

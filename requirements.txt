@@ -1,5 +1,3 @@
-flask
-psutil
-streamlit==1.38.0
-pyserial==3.5
-flask-cors
+# Global Python libraries if needed across projects
+# numpy
+# pandas

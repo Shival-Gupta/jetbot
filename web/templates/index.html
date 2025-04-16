@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jetson Control Panel</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        body { font-family: sans-serif; line-height: 1.6; padding: 20px; background-color: #f4f4f4; }
+        .container { max-width: 800px; margin: auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h1, h2 { color: #333; }
+        .stats, .controls, .logs { margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 5px; background-color: #f9f9f9; }
+        .stats div, .controls button { margin-bottom: 10px; }
+        button { padding: 10px 15px; font-size: 1em; cursor: pointer; border: none; border-radius: 4px; margin-right: 10px; }
+        .btn-reboot { background-color: #ffa500; color: white; }
+        .btn-shutdown { background-color: #dc3545; color: white; }
+        .btn-refresh { background-color: #007bff; color: white; }
+        button:hover { opacity: 0.9; }
+        progress { width: 100%; height: 20px; margin-top: 5px; }
+        #status { margin-top: 15px; padding: 10px; background-color: #e9ecef; border-radius: 4px; font-family: monospace; }
+        #log-output {
+            margin-top: 10px;
+            height: 300px;
+            overflow-y: scroll;
+            background-color: #222;
+            color: #eee;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap; /* Wrap long lines */
+            border: 1px solid #444;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Jetson Nano Control Panel</h1>
+
+        <div class="stats">
+            <h2>System Status</h2>
+            <div id="cpu-stat">CPU Usage: <span id="cpu-percent">...</span>% <progress id="cpu-progress" max="100" value="0"></progress></div>
+            <div id="mem-stat">Memory Usage: <span id="mem-percent">...</span>% (<span id="mem-used">...</span> GB / <span id="mem-total">...</span> GB) <progress id="mem-progress" max="100" value="0"></progress></div>
+            <div id="disk-stat">Disk Usage (/): <span id="disk-percent">...</span>% (<span id="disk-used">...</span> GB / <span id="disk-total">...</span> GB) <progress id="disk-progress" max="100" value="0"></progress></div>
+        </div>
+
+        <div class="controls">
+            <h2>Controls</h2>
+            <button class="btn-refresh" onclick="sendCommand('refresh')">Refresh Automation</button>
+            <button class="btn-reboot" onclick="confirmAndSendCommand('reboot', 'Are you sure you want to REBOOT the Jetson?')">Reboot</button>
+            <button class="btn-shutdown" onclick="confirmAndSendCommand('shutdown', 'Are you sure you want to SHUT DOWN the Jetson?')">Shutdown</button>
+            <div id="status">Status: Idle</div>
+        </div>
+
+         <div class="logs">
+            <h2>Automation Logs (<span id="log-status">Connecting...</span>)</h2>
+            <div id="log-output"></div>
+        </div>
+    </div>
+
+    <script>
+        const statusElement = document.getElementById('status');
+        const logOutputElement = document.getElementById('log-output');
+        const logStatusElement = document.getElementById('log-status');
+
+        function updateStatus(message, isError = false) {
+            statusElement.textContent = `Status: ${message}`;
+            statusElement.style.color = isError ? 'red' : 'black';
+            statusElement.style.backgroundColor = isError ? '#f8d7da' : '#e9ecef';
+        }
+
+        function confirmAndSendCommand(action, confirmMessage) {
+            if (confirm(confirmMessage)) {
+                sendCommand(action);
+            }
+        }
+
+        async function sendCommand(action) {
+            updateStatus(`Sending ${action} command...`);
+            try {
+                const response = await fetch(`/${action}`, { method: 'POST' });
+                const result = await response.json();
+
+                if (result.success) {
+                    updateStatus(`${action.charAt(0).toUpperCase() + action.slice(1)} command successful: ${result.message}`);
+                } else {
+                    updateStatus(`Error during ${action}: ${result.message}`, true);
+                }
+            } catch (error) {
+                updateStatus(`Failed to send ${action} command: ${error}`, true);
+            }
+        }
+
+        async function fetchStats() {
+            try {
+                const response = await fetch('/stats');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const stats = await response.json();
+
+                document.getElementById('cpu-percent').textContent = stats.cpu_percent.toFixed(1);
+                document.getElementById('cpu-progress').value = stats.cpu_percent;
+
+                document.getElementById('mem-percent').textContent = stats.memory_percent.toFixed(1);
+                document.getElementById('mem-used').textContent = stats.memory_used_gb;
+                document.getElementById('mem-total').textContent = stats.memory_total_gb;
+                document.getElementById('mem-progress').value = stats.memory_percent;
+
+                document.getElementById('disk-percent').textContent = stats.disk_percent.toFixed(1);
+                document.getElementById('disk-used').textContent = stats.disk_used_gb;
+                document.getElementById('disk-total').textContent = stats.disk_total_gb;
+                document.getElementById('disk-progress').value = stats.disk_percent;
+
+            } catch (error) {
+                console.error('Error fetching stats:', error);
+                // Optionally display an error message on the page
+            }
+        }
+
+        function connectLogStream() {
+            logOutputElement.innerHTML = ''; // Clear previous logs
+            logStatusElement.textContent = 'Connecting...';
+            logStatusElement.style.color = 'orange';
+
+            const eventSource = new EventSource('/logs');
+
+            eventSource.onopen = function() {
+                console.log("Log stream connection opened.");
+                 logStatusElement.textContent = 'Connected';
+                 logStatusElement.style.color = 'lightgreen';
+            };
+
+            eventSource.onmessage = function(event) {
+                const logLine = document.createElement('div');
+                logLine.textContent = event.data;
+                logOutputElement.appendChild(logLine);
+                // Auto-scroll to the bottom
+                logOutputElement.scrollTop = logOutputElement.scrollHeight;
+            };
+
+            eventSource.onerror = function(err) {
+                console.error('EventSource failed:', err);
+                 logStatusElement.textContent = 'Disconnected';
+                 logStatusElement.style.color = 'red';
+                eventSource.close();
+                // Optional: Try to reconnect after a delay
+                setTimeout(connectLogStream, 5000); // Reconnect after 5 seconds
+            };
+        }
+
+
+        // Fetch stats every 2 seconds
+        setInterval(fetchStats, 2000);
+        // Fetch initial stats immediately
+        fetchStats();
+        // Connect to log stream
+        connectLogStream();
+    </script>
+</body>
+</html>

@@ -1,1 +1,4 @@
-neofetch
+# Optional system-wide utilities you might want
+htop
+vim
+net-tools

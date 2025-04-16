@@ -1,0 +1,4 @@
+# No specific requirements for this simple example
+# Add packages like:
+# requests
+# numpy

@@ -1,1 +1,29 @@
-chmod +x start.sh
+#!/bin/bash
+
+# Change to the repository directory
+cd "$(dirname "$0")"
+
+# Install apt packages if apt_requirements.txt exists
+if [ -f apt_requirements.txt ]; then
+    sudo apt-get update
+    sudo apt-get install -y $(cat apt_requirements.txt)
+fi
+
+# Install Python dependencies if requirements.txt exists
+if [ -f requirements.txt ]; then
+    pip3 install -r requirements.txt
+fi
+
+# Run preflight checks if preflightcheck.sh exists
+if [ -f preflightcheck.sh ]; then
+    bash preflightcheck.sh >> /var/log/automation.log 2>&1
+fi
+
+# Start the main Python script if main.py exists
+if [ -f main.py ]; then
+    python3 main.py >> /var/log/automation.log 2>&1 &
+fi
+
+# Start the web server
+cd webapp
+python3 app.py &

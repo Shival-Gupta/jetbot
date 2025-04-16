@@ -3,15 +3,19 @@
 # Change to the repository directory
 cd "$(dirname "$0")"
 
+# Ensure log file is writable
+sudo touch /var/log/automation.log
+sudo chown jetson:jetson /var/log/automation.log
+
 # Install apt packages if apt_requirements.txt exists
 if [ -f apt_requirements.txt ]; then
     sudo apt-get update
-    sudo apt-get install -y $(cat apt_requirements.txt)
+    sudo apt-get install -y $(cat apt_requirements.txt) >> /var/log/automation.log 2>&1
 fi
 
 # Install Python dependencies if requirements.txt exists
 if [ -f requirements.txt ]; then
-    pip3 install -r requirements.txt
+    pip3 install -r requirements.txt >> /var/log/automation.log 2>&1
 fi
 
 # Run preflight checks if preflightcheck.sh exists
@@ -23,7 +27,3 @@ fi
 if [ -f main.py ]; then
     python3 main.py >> /var/log/automation.log 2>&1 &
 fi
-
-# Start the web server
-cd webapp
-python3 app.py &

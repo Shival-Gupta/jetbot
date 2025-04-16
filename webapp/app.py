@@ -10,7 +10,7 @@ def index():
     # System stats
     cpu_usage = psutil.cpu_percent()
     ram_usage = psutil.virtual_memory().percent
-    # Placeholder for GPU and thermals (expand as needed)
+    # Placeholder for GPU and thermals
     gpu_usage = "N/A"  # Requires tegrastats or similar
     try:
         with open('/sys/class/thermal/thermal_zone0/temp', 'r') as f:
@@ -19,7 +19,10 @@ def index():
         thermals = "N/A"
 
     # Neofetch output
-    neofetch_output = subprocess.check_output(['neofetch', '--stdout']).decode('utf-8')
+    try:
+        neofetch_output = subprocess.check_output(['neofetch', '--stdout']).decode('utf-8')
+    except:
+        neofetch_output = "Neofetch not available"
 
     # Automation log
     automation_log = ""
